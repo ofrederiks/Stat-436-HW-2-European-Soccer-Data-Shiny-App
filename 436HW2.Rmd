@@ -1,0 +1,95 @@
+---
+title: "436HW2"
+author: "Olin Frederiks"
+output:
+  pdf_document: default
+---
+
+```{r}
+library(shiny)
+library(tidyverse)
+library(broom)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+Euro_Soccer_df <- read.csv('https://uwmadison.box.com/shared/static/iw4827quy76t5v34cj86a0d4edbgwkkb.csv')
+
+Euro_Soccer_df <- Euro_Soccer_df %>%
+  mutate(goal_efficiency = (goals_for/shots_on_target), 
+         save_efficiency = (saves/shots_on_target_against))
+
+ui <- fluidPage(
+  titlePanel("Efficient Points"),
+  checkboxGroupInput("competition", "Competition", 
+                     c('Premier League', 'Ligue 1', 'La Liga', 'Serie A', 'Fußball-Bundesliga')),
+  sliderInput("season_end", "Season", 
+              min = min(Euro_Soccer_df$season_end), max = max(Euro_Soccer_df$season_end), c(2011, 2021), sep = ""),
+  plotOutput("scatter1"),
+  plotOutput("scatter2"),
+  dataTableOutput("table")
+)
+ 
+server <- function(input, output) {
+  
+  filtered_data <- reactive({
+    Euro_Soccer_df %>%
+      filter(competition %in% input$competition,
+             season_end >= input$season_end[1],
+             season_end <= input$season_end[2])
+  })
+  
+  output$scatter1 <- renderPlot({
+    ggplot(filtered_data()) +
+      geom_point(aes(goal_efficiency, points)) +
+      scale_alpha(range = c(0.1, 1)) +
+      xlab('Goal Efficiency') +
+      ylab('Points')
+  })
+  
+  output$scatter2 <- renderPlot({
+    ggplot(filtered_data(), aes(save_efficiency, points)) +
+      geom_point() +
+      xlab('Save Efficiency') +
+      ylab('Points')
+  })
+  
+  output$table <- renderDataTable(filtered_data())
+  
+}
+
+shinyApp(ui, server)
+```
+
+```{r}
+head(Euro_Soccer_df)
+```
+
+```{r}
+    ggplot(Euro_Soccer_df) +
+      geom_point(aes(goal_efficiency, points)) +
+      scale_alpha(range = c(0.1, 1)) +
+      xlab('Goal Efficiency') +
+      ylab('Points') +
+      labs(title = 'Goal Efficiency vs. Points')
+
+    ggplot(Euro_Soccer_df, aes(save_efficiency, points)) +
+      geom_point() +
+      xlab('Save Efficiency') +
+      ylab('Points') +
+      labs(title = 'Save Efficiency vs. Points')
+```
+
+# Background Information
+
+I chose to analyze two relationships from the European Soccer Team Datasets: goal efficiency and save efficiency. In soccer, ranking in each league is a point system, a win is 3 points, a tie is 1 point and a loss is 0 points. I compared these two statistics to teams point total to understand efficient goalscorers and efficient goalkeepers and how that impacts the teams ranking at the end of each season. In order to visualize this idea, I used two separate scatterplots where the user can edit which league and year appears on the graphs. Something I learned during the creation of these graphs is that there are a handful of low save efficiency rates, but the team still has a large number of points. This realization was certainly unexpected because prior to this analysis, I would have assumed that the lower your save efficiency the worse off your team will be which translates to a lower point total. Potentially, these unexpected teams faced a lower number of shots total. Furthermore, they had a lower save effciency but they still gave up far less goals compared to other teams so they still had a high point total. This means that these teams may have a good defence and structure but a lower quality goalkeeper. 
+
+# Dataset and Variable Creation
+
+I first found the dataset on kaggle and downloaded it to my computer. This dataset covers the 2011 season up until the 2021 season and displays data from each team from each of the top five leagues in Europe. The dataset is organized by each season sorting the teams by their ranking at the end of the season. Rank is determined by teams with the most points at the end of the season. After initially going through the information, I created two new variables: save_efficiency and goal_efficiency. Save Efficiency is Saves divided by Total Shots on Target Against and Goal Efficiency is Goals For divided by Total Shots on Target. To further explain, a higher save efficiency means a goalkeeper saved a large percentage of the shots they faced. Same concept applies for goal efficiency where the larger this value means the offensive player scored a larger percentage of their shots on goal. I then compared these two new variables to the teams point total for that particular season in order to understand the relationships. 
+
+# Interactive Explanations
+
+My analysis has three interactive pieces. The two that dictate the rest are a checkbox input to highlight which league you want to analyze and a slider input where you can choose which years appear. These two inputs dictate the data points that appear on the scatter plots and the table. You can also keyword search particular teams into the graph which is cool to analyze how team's metrics change from one season to the next. These visualizations are useful to understand teams that are offensively and defensively efficient. There is a positive correlation between goal efficiency and points and save efficiency and points. 
+
